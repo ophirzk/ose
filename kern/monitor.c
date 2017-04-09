@@ -10,9 +10,9 @@
 #include <kern/console.h>
 #include <kern/monitor.h>
 #include <kern/kdebug.h>
+#include <kern/pmap.h>
 
 #define CMDBUF_SIZE	80	// enough for one VGA text line
-
 
 struct Command {
 	const char *name;
@@ -24,7 +24,8 @@ struct Command {
 static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
-	{ "backtrace", "Display backtrace information", mon_backtrace}
+	{ "backtrace", "Display backtrace information", mon_backtrace},
+	{ "showmappings", "Display mapping information", mon_showmappings}
 };
 #define NCOMMANDS (sizeof(commands)/sizeof(commands[0]))
 
@@ -39,6 +40,43 @@ mon_help(int argc, char **argv, struct Trapframe *tf)
 		cprintf("%s - %s\n", commands[i].name, commands[i].desc);
 	return 0;
 }
+
+//[LAB2]
+int
+mon_showmappings(int argc, char **argv, struct Trapframe *tf)
+{
+	cprintf("Show mappings\n\n");
+	if (!argv[1] || !argv[2])
+	{
+		cprintf("Usage: showmappings start_addr end_addr\n");
+		return 1;
+	}
+
+	char* end_ptr = argv[1] + strlen(argv[1]) + 1;
+	uintptr_t curr_addr = (uintptr_t) strtol(argv[1], &end_ptr, 16);
+	end_ptr = argv[2] + strlen(argv[2]) + 1;
+	uintptr_t end_addr = (uintptr_t) strtol(argv[2], &end_ptr, 16);
+	cprintf("Start address: %08x\nEnd address: %08x\n", curr_addr, end_addr);
+
+	while(curr_addr <= end_addr)
+	{
+		pte_t* pte = pgdir_walk(kern_pgdir, (void*)curr_addr, false);
+		assert(kern_pgdir);
+		if(!pte || !(*pte & PTE_P))
+		{
+			cprintf("virtual address 0x%08x is not mapped", curr_addr);
+		}
+		else
+		{
+			cprintf("virtual page 0x%08x -> physical page 0x%08x ", curr_addr, PTE_ADDR(*pte));
+			cprintf("PTE_P: %d PTE_U: %d PTE_W: %d", *pte & PTE_P, *pte & PTE_U, *pte & PTE_W);
+		}
+		cprintf("\n");
+		curr_addr += PGSIZE;
+	}
+	return 0;
+}
+//[LAB2]
 
 int
 mon_kerninfo(int argc, char **argv, struct Trapframe *tf)
