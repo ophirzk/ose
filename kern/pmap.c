@@ -162,6 +162,10 @@ mem_init(void)
 	//////////////////////////////////////////////////////////////////////
 	// Make 'envs' point to an array of size 'NENV' of 'struct Env'.
 	// LAB 3: Your code here.
+	//[LAB3]
+	envs = (struct Env*) boot_alloc(NENV * sizeof(struct Env));
+	memset(envs, 0, sizeof(struct Env) * NENV);
+	//[LAB3]
 
 	//////////////////////////////////////////////////////////////////////
 	// Now that we've allocated the initial kernel data structures, we set
@@ -196,6 +200,7 @@ mem_init(void)
 	//    - the new image at UENVS  -- kernel R, user R
 	//    - envs itself -- kernel RW, user NONE
 	// LAB 3: Your code here.
+	boot_map_region(kern_pgdir, UENVS, PTSIZE, PADDR(envs), PTE_U | PTE_P);
 
 	//////////////////////////////////////////////////////////////////////
 	// Use the physical memory that 'bootstack' refers to as the kernel
@@ -223,7 +228,6 @@ mem_init(void)
 	//[LAB2]
 	boot_map_region(kern_pgdir, KERNBASE, 0x100000000 - KERNBASE, 0, PTE_W);
 	//[LAB2]
-
 	// Check that the initial page directory has been set up correctly.
 	check_kern_pgdir();
 
@@ -476,7 +480,7 @@ page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
 	pte_t* pte = pgdir_walk(pgdir, va, true);
 	if (!pte)
 		return -E_NO_MEM;
-	
+
 	pp->pp_ref += 1;
 	// The page is already mapped
 	if (*pte & PTE_P)
@@ -509,10 +513,10 @@ page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
 	pte_t* pte = pgdir_walk(pgdir, va, false);
 	if (!pte || !(*pte & PTE_P))
 		return NULL;
-	
+
 	if (pte_store)
 		*pte_store = pte;
-	
+
 	return pa2page(PTE_ADDR(*pte));
 	// [LAB2]
 }
@@ -541,7 +545,7 @@ page_remove(pde_t *pgdir, void *va)
 	struct PageInfo* pp = page_lookup(pgdir, va, &pte);
 	if (!pp)
 		return;
-	
+
 	page_decref(pp);
 	//if (!pp->pp_ref)
 	{
@@ -881,7 +885,7 @@ check_page(void)
 
 	// should be able to map pp2 at PGSIZE because it's already there
 	assert(page_insert(kern_pgdir, pp2, (void*) PGSIZE, PTE_W) == 0);
-	// LAB2 failure here 
+	// LAB2 failure here
 	assert(check_va2pa(kern_pgdir, PGSIZE) == page2pa(pp2));
 	assert(pp2->pp_ref == 1);
 
