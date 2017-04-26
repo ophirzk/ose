@@ -77,6 +77,7 @@ pa2page(physaddr_t pa)
 {
 	if (PGNUM(pa) >= npages)
 		panic("pa2page called with invalid pa");
+
 	return &pages[PGNUM(pa)];
 }
 
